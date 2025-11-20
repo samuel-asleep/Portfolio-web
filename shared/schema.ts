@@ -57,7 +57,9 @@ export const insertProjectSchema = createInsertSchema(projects).omit({
   tags: z.array(z.string()).default([]),
   liveUrl: z.union([z.string().url(), z.literal("")]).optional(),
   githubUrl: z.union([z.string().url(), z.literal("")]).optional(),
-  order: z.number().default(0),
+  order: z.number().int().min(0).default(0).refine((val) => !isNaN(val), {
+    message: "Order must be a valid number",
+  }),
 });
 
 export type InsertProject = z.infer<typeof insertProjectSchema>;

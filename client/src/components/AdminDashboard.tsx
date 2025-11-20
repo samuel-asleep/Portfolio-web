@@ -10,6 +10,7 @@ import { Upload } from "lucide-react";
 import { queryClient } from "@/lib/queryClient";
 import type { Profile } from "@shared/schema";
 import ImageCropper from "./ImageCropper";
+import ProjectsManager from "./ProjectsManager";
 
 export default function AdminDashboard() {
   const { toast } = useToast();
@@ -418,6 +419,10 @@ export default function AdminDashboard() {
             </Button>
           </div>
         </form>
+
+        <div className="mt-8">
+          <ProjectsManager apiKey={apiKey} />
+        </div>
       </div>
     </div>
   );

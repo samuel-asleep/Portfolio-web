@@ -153,13 +153,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new project (protected)
   app.post('/api/projects', requireApiKey, async (req, res) => {
     try {
+      // Parse order: validate it's a finite number
+      let order = 0;
+      if (req.body.order !== undefined && req.body.order !== null && req.body.order !== '') {
+        const parsedOrder = Number(req.body.order);
+        if (!Number.isFinite(parsedOrder) || parsedOrder < 0) {
+          return res.status(400).json({ error: 'Order must be a valid non-negative number' });
+        }
+        order = Math.floor(parsedOrder);
+      }
+
       // Parse tags if it's a string
       const projectData = {
         ...req.body,
         tags: typeof req.body.tags === 'string' 
           ? req.body.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean)
           : req.body.tags || [],
-        order: req.body.order ? parseInt(req.body.order, 10) : 0,
+        order,
       };
 
       const validated = insertProjectSchema.parse(projectData);
@@ -177,14 +187,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update a project (protected)
   app.patch('/api/projects/:id', requireApiKey, async (req, res) => {
     try {
-      // Parse tags if it's a string
       const projectData: any = { ...req.body };
+      
+      // Parse tags if it's a string
       if (typeof projectData.tags === 'string') {
         projectData.tags = projectData.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean);
       }
-      if (projectData.order !== undefined) {
-        projectData.order = parseInt(projectData.order, 10);
+      
+      // Validate and parse order if provided
+      if (projectData.order !== undefined && projectData.order !== null && projectData.order !== '') {
+        const parsedOrder = Number(projectData.order);
+        if (!Number.isFinite(parsedOrder) || parsedOrder < 0) {
+          return res.status(400).json({ error: 'Order must be a valid non-negative number' });
+        }
+        projectData.order = Math.floor(parsedOrder);
+      } else if ('order' in projectData) {
+        // If order was explicitly sent but is empty/invalid, remove it from update
+        delete projectData.order;
       }
+
+      // Remove undefined values to prevent null writes on NOT NULL columns
+      Object.keys(projectData).forEach(key => {
+        if (projectData[key] === undefined) {
+          delete projectData[key];
+        }
+      });
 
       const validated = insertProjectSchema.partial().parse(projectData);
       const updatedProject = await storage.updateProject(req.params.id, validated);
