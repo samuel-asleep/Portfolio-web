@@ -71,10 +71,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingProfile = await storage.getProfile();
       
       const profileData = {
-        ...req.body,
+        name: req.body.name || '',
+        title: req.body.title || '',
+        bio: req.body.bio || '',
+        email: req.body.email || '',
+        phone: req.body.phone || '',
+        location: req.body.location || '',
         github: req.body.github || '',
         linkedin: req.body.linkedin || '',
         twitter: req.body.twitter || '',
+        profileImage: undefined as string | undefined,
       };
 
       // Priority 1: Check if a direct image URL was provided (non-empty)

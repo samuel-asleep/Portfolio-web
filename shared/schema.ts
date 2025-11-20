@@ -5,13 +5,13 @@ import { z } from "zod";
 
 export const profiles = pgTable("profiles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
-  title: text("title").notNull(),
-  bio: text("bio").notNull(),
+  name: text("name").notNull().default(""),
+  title: text("title").notNull().default(""),
+  bio: text("bio").notNull().default(""),
   profileImage: text("profile_image"),
-  email: text("email").notNull(),
-  phone: text("phone").notNull(),
-  location: text("location").notNull(),
+  email: text("email").notNull().default(""),
+  phone: text("phone").notNull().default(""),
+  location: text("location").notNull().default(""),
   github: text("github"),
   linkedin: text("linkedin"),
   twitter: text("twitter"),
@@ -20,9 +20,16 @@ export const profiles = pgTable("profiles", {
 export const insertProfileSchema = createInsertSchema(profiles).omit({
   id: true,
 }).extend({
-  github: z.string().url().optional().or(z.literal("")),
-  linkedin: z.string().url().optional().or(z.literal("")),
-  twitter: z.string().url().optional().or(z.literal("")),
+  name: z.string().default(""),
+  title: z.string().default(""),
+  bio: z.string().default(""),
+  email: z.union([z.string().email(), z.literal("")]).default(""),
+  phone: z.string().default(""),
+  location: z.string().default(""),
+  github: z.union([z.string().url(), z.literal("")]).optional(),
+  linkedin: z.union([z.string().url(), z.literal("")]).optional(),
+  twitter: z.union([z.string().url(), z.literal("")]).optional(),
+  profileImage: z.string().optional(),
 });
 
 export type InsertProfile = z.infer<typeof insertProfileSchema>;
