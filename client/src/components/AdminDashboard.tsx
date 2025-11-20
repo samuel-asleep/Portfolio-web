@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import ImageCropper from "./ImageCropper";
 
 export default function AdminDashboard() {
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [apiKey, setApiKey] = useState("");
   const [formData, setFormData] = useState({
     name: "",
@@ -114,6 +115,9 @@ export default function AdminDashboard() {
     setProfileImage(croppedFile);
     setCropperOpen(false);
     setImageToCrop("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
     toast({
       title: "Image cropped",
       description: "Your profile picture has been cropped and is ready to save.",
@@ -123,6 +127,9 @@ export default function AdminDashboard() {
   const handleCropCancel = () => {
     setCropperOpen(false);
     setImageToCrop("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -211,6 +218,7 @@ export default function AdminDashboard() {
                   <Label htmlFor="profileImage">Or Upload Profile Photo</Label>
                   <div className="mt-2 flex items-center gap-4">
                     <Input
+                      ref={fileInputRef}
                       id="profileImage"
                       type="file"
                       accept="image/*"

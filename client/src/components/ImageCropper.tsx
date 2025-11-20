@@ -77,7 +77,10 @@ export default function ImageCropper({ imageSrc, onCropComplete, onCancel, isOpe
           <div className="flex justify-center">
             <ReactCrop
               crop={crop}
-              onChange={(c) => setCrop(c)}
+              onChange={(c) => {
+                setCrop(c);
+                setCompletedCrop(c as PixelCrop);
+              }}
               onComplete={(c) => setCompletedCrop(c)}
               aspect={1}
               circularCrop
