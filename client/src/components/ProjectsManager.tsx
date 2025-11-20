@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, ExternalLink, Github } from "lucide-react";
+import { Plus, Pencil, Trash2, ExternalLink, Github, Upload, Link as LinkIcon, X } from "lucide-react";
 import { queryClient } from "@/lib/queryClient";
 import type { Project } from "@shared/schema";
 import {
@@ -16,6 +16,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ProjectFormData {
   title: string;
@@ -36,6 +37,9 @@ export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [formData, setFormData] = useState<ProjectFormData>({
     title: "",
     description: "",
@@ -167,6 +171,69 @@ export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
       order: projects.length,
     });
     setEditingProject(null);
+    setSelectedFile(null);
+    setImagePreview("");
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Error",
+          description: "Image size must be less than 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedFile(null);
+    setImagePreview("");
+    setFormData({ ...formData, image: "" });
+  };
+
+  const uploadImage = async (): Promise<string | null> => {
+    if (!selectedFile) return null;
+
+    setUploadingImage(true);
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('image', selectedFile);
+
+      const response = await fetch('/api/projects/upload-image', {
+        method: 'POST',
+        headers: {
+          'x-api-key': apiKey,
+        },
+        body: formDataUpload,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload image');
+      }
+
+      const { imageUrl } = await response.json();
+      return imageUrl;
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to upload image",
+        variant: "destructive",
+      });
+      return null;
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleOpenDialog = (project?: Project) => {
@@ -182,13 +249,16 @@ export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
         githubUrl: project.githubUrl || "",
         order: project.order,
       });
+      if (project.image) {
+        setImagePreview(project.image);
+      }
     } else {
       resetForm();
     }
     setDialogOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!apiKey) {
@@ -200,13 +270,26 @@ export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
       return;
     }
 
+    let imageUrl = formData.image;
+
+    if (selectedFile) {
+      const uploadedUrl = await uploadImage();
+      if (uploadedUrl) {
+        imageUrl = uploadedUrl;
+      } else {
+        return;
+      }
+    }
+
+    const dataToSubmit = { ...formData, image: imageUrl };
+
     if (editingProject) {
       updateProjectMutation.mutate({
         id: editingProject.id,
-        data: formData,
+        data: dataToSubmit,
       });
     } else {
-      createProjectMutation.mutate(formData);
+      createProjectMutation.mutate(dataToSubmit);
     }
   };
 
@@ -366,15 +449,85 @@ export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
             </div>
 
             <div>
-              <Label htmlFor="project-image">Image URL</Label>
-              <Input
-                id="project-image"
-                type="url"
-                value={formData.image}
-                onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                placeholder="https://example.com/project-image.jpg"
-                data-testid="input-project-image"
-              />
+              <Label>Project Image</Label>
+              <Tabs defaultValue="upload" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="upload" data-testid="tab-upload-image">
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload File
+                  </TabsTrigger>
+                  <TabsTrigger value="url" data-testid="tab-url-image">
+                    <LinkIcon className="mr-2 h-4 w-4" />
+                    Image URL
+                  </TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="upload" className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="project-image-file"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileSelect}
+                      className="flex-1"
+                      data-testid="input-project-image-file"
+                    />
+                    {(selectedFile || imagePreview) && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={handleRemoveImage}
+                        data-testid="button-remove-image"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  {imagePreview && (
+                    <div className="relative w-full aspect-video bg-muted rounded-md overflow-hidden">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                        data-testid="img-preview"
+                      />
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Upload an image file (max 5MB). Supported formats: JPG, PNG, GIF, WebP
+                  </p>
+                </TabsContent>
+                
+                <TabsContent value="url" className="space-y-3">
+                  <Input
+                    id="project-image-url"
+                    type="url"
+                    value={formData.image}
+                    onChange={(e) => {
+                      setFormData({ ...formData, image: e.target.value });
+                      setImagePreview(e.target.value);
+                      setSelectedFile(null);
+                    }}
+                    placeholder="https://example.com/project-image.jpg"
+                    data-testid="input-project-image-url"
+                  />
+                  {formData.image && (
+                    <div className="relative w-full aspect-video bg-muted rounded-md overflow-hidden">
+                      <img
+                        src={formData.image}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                        onError={() => setImagePreview("")}
+                        data-testid="img-url-preview"
+                      />
+                    </div>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Enter a direct URL to an image hosted elsewhere
+                  </p>
+                </TabsContent>
+              </Tabs>
             </div>
 
             <div>
@@ -442,10 +595,12 @@ export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
               </Button>
               <Button
                 type="submit"
-                disabled={createProjectMutation.isPending || updateProjectMutation.isPending}
+                disabled={createProjectMutation.isPending || updateProjectMutation.isPending || uploadingImage}
                 data-testid="button-save-project"
               >
-                {createProjectMutation.isPending || updateProjectMutation.isPending
+                {uploadingImage
+                  ? "Uploading..."
+                  : createProjectMutation.isPending || updateProjectMutation.isPending
                   ? "Saving..."
                   : editingProject
                   ? "Update Project"
