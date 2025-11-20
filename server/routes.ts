@@ -9,8 +9,12 @@ import fs from "fs";
 
 // Configure multer for profile image uploads
 const uploadDir = path.join(process.cwd(), "uploads");
+const projectUploadDir = path.join(uploadDir, "projects");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
+}
+if (!fs.existsSync(projectUploadDir)) {
+  fs.mkdirSync(projectUploadDir, { recursive: true });
 }
 
 const upload = multer({
@@ -19,6 +23,28 @@ const upload = multer({
     filename: (req, file, cb) => {
       const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
       cb(null, 'profile-' + uniqueSuffix + path.extname(file.originalname));
+    }
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
+
+const projectUpload = multer({
+  storage: multer.diskStorage({
+    destination: projectUploadDir,
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, 'project-' + uniqueSuffix + path.extname(file.originalname));
     }
   }),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
@@ -147,6 +173,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching project:', error);
       res.status(500).json({ error: 'Failed to fetch project' });
+    }
+  });
+
+  // Upload project image (protected)
+  app.post('/api/projects/upload-image', requireApiKey, projectUpload.single('image'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: 'No image file provided' });
+      }
+      const imageUrl = `/uploads/projects/${req.file.filename}`;
+      res.json({ imageUrl });
+    } catch (error) {
+      console.error('Error uploading project image:', error);
+      res.status(500).json({ error: 'Failed to upload image' });
     }
   });
 

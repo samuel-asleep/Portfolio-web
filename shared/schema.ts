@@ -53,7 +53,11 @@ export const insertProjectSchema = createInsertSchema(projects).omit({
   title: z.string().min(1, "Title is required"),
   description: z.string().min(1, "Description is required"),
   longDescription: z.string().optional(),
-  image: z.union([z.string().url(), z.literal("")]).optional(),
+  image: z.union([
+    z.string().url(), 
+    z.string().startsWith('/uploads/'), 
+    z.literal("")
+  ]).optional(),
   tags: z.array(z.string()).default([]),
   liveUrl: z.union([z.string().url(), z.literal("")]).optional(),
   githubUrl: z.union([z.string().url(), z.literal("")]).optional(),
