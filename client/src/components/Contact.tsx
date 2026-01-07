@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Mail, MapPin, Phone } from "lucide-react";
 import { SiGithub, SiLinkedin, SiX } from "react-icons/si";
+import { useToast } from "@/hooks/use-toast";
 
 interface ContactInfo {
   email?: string;
@@ -25,12 +26,32 @@ const defaultInfo: ContactInfo = {
 };
 
 export default function Contact({ info = defaultInfo }: ContactProps) {
+  const { toast } = useToast();
+
+  const copyEmail = () => {
+    if (info.email) {
+      navigator.clipboard.writeText(info.email).then(() => {
+        toast({
+          title: "Email Copied!",
+          description: `${info.email} copied to clipboard`,
+        });
+      }).catch(() => {
+        toast({
+          title: "Copy Failed",
+          description: "Could not copy email to clipboard",
+          variant: "destructive",
+        });
+      });
+    }
+  };
+
   const contactItems = [
     {
       icon: Mail,
       label: "Email",
       value: info.email,
       href: `mailto:${info.email}`,
+      onClick: copyEmail,
       testId: "contact-email",
     },
     {
@@ -81,7 +102,13 @@ export default function Contact({ info = defaultInfo }: ContactProps) {
                 {item.href ? (
                   <a
                     href={item.href}
-                    className="text-foreground hover:text-primary transition-colors font-medium"
+                    onClick={(e) => {
+                      if (item.onClick) {
+                        e.preventDefault();
+                        item.onClick();
+                      }
+                    }}
+                    className="text-foreground hover:text-primary transition-colors font-medium cursor-pointer"
                     data-testid={`link-${item.testId}`}
                   >
                     {item.value}
