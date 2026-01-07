@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useCsrfToken } from "@/hooks/use-csrf-token";
 import { Plus, Pencil, Trash2, ExternalLink, Github, Upload, Link as LinkIcon, X } from "lucide-react";
 import { queryClient } from "@/lib/queryClient";
 import type { Project } from "@shared/schema";
@@ -31,11 +32,12 @@ interface ProjectFormData {
 }
 
 interface ProjectsManagerProps {
-  apiKey: string;
+  // No props needed - auth via session cookie
 }
 
-export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
+export default function ProjectsManager({}: ProjectsManagerProps = {}) {
   const { toast } = useToast();
+  const csrfToken = useCsrfToken();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -61,9 +63,10 @@ export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
       const response = await fetch('/api/projects', {
         method: 'POST',
         headers: {
-          'x-api-key': apiKey,
           'Content-Type': 'application/json',
+          'x-csrf-token': csrfToken,
         },
+        credentials: 'include',
         body: JSON.stringify(data),
       });
 
@@ -97,9 +100,10 @@ export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
       const response = await fetch(`/api/projects/${id}`, {
         method: 'PATCH',
         headers: {
-          'x-api-key': apiKey,
           'Content-Type': 'application/json',
+          'x-csrf-token': csrfToken,
         },
+        credentials: 'include',
         body: JSON.stringify(data),
       });
 
@@ -133,8 +137,9 @@ export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
       const response = await fetch(`/api/projects/${id}`, {
         method: 'DELETE',
         headers: {
-          'x-api-key': apiKey,
+          'x-csrf-token': csrfToken,
         },
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -215,8 +220,9 @@ export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
       const response = await fetch('/api/projects/upload-image', {
         method: 'POST',
         headers: {
-          'x-api-key': apiKey,
+          'x-csrf-token': csrfToken,
         },
+        credentials: 'include',
         body: formDataUpload,
       });
 
@@ -267,10 +273,10 @@ export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!apiKey) {
+    if (!csrfToken) {
       toast({
         title: "Error",
-        description: "Please enter your API key first",
+        description: "Security token not loaded. Please refresh the page.",
         variant: "destructive",
       });
       return;
@@ -306,10 +312,10 @@ export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
   };
 
   const handleDelete = (id: string) => {
-    if (!apiKey) {
+    if (!csrfToken) {
       toast({
         title: "Error",
-        description: "Please enter your API key first",
+        description: "Security token not loaded. Please refresh the page.",
         variant: "destructive",
       });
       return;

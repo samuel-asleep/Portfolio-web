@@ -22,12 +22,23 @@ export default function About({
         <Card className="p-8 md:p-12 glassmorphism hover-elevate transition-all">
           <div className="grid md:grid-cols-[300px_1fr] gap-8 md:gap-12 items-center">
             <div className="flex justify-center">
-              <Avatar className="h-64 w-64 border-4 border-primary/30 glow-effect-sm" data-testid="avatar-profile">
-                {profileImage && <AvatarImage src={profileImage} alt={name} />}
-                <AvatarFallback className="text-6xl bg-gradient-to-br from-primary to-accent text-primary-foreground">
-                  {name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                {/* Animated gradient ring */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-primary via-accent to-primary animate-gradient-ring opacity-75 blur-sm" style={{
+                  padding: '4px',
+                  animation: 'spin 3s linear infinite, pulse 2s ease-in-out infinite'
+                }}></div>
+                
+                {/* Avatar container */}
+                <div className="relative">
+                  <Avatar className="h-64 w-64 border-4 border-background" data-testid="avatar-profile">
+                    {profileImage && <AvatarImage src={profileImage} alt={name} />}
+                    <AvatarFallback className="text-6xl bg-gradient-to-br from-primary to-accent text-primary-foreground">
+                      {name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+              </div>
             </div>
 
             <div className="space-y-6">

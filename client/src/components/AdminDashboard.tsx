@@ -6,7 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Upload } from "lucide-react";
+import { useCsrfToken } from "@/hooks/use-csrf-token";
+import { Upload, LogOut } from "lucide-react";
 import { queryClient } from "@/lib/queryClient";
 import type { Profile } from "@shared/schema";
 import ImageCropper from "./ImageCropper";
@@ -14,8 +15,11 @@ import ProjectsManager from "./ProjectsManager";
 
 export default function AdminDashboard() {
   const { toast } = useToast();
+  const csrfToken = useCsrfToken();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [apiKey, setApiKey] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [adminKey, setAdminKey] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: "",
     title: "",
@@ -34,7 +38,28 @@ export default function AdminDashboard() {
 
   const { data: profile } = useQuery<Profile>({
     queryKey: ['/api/profile'],
+    enabled: isAuthenticated, // Only fetch when authenticated
   });
+
+  // Check authentication status on mount
+  useEffect(() => {
+    fetch('/api/admin/status', { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => {
+        if (!data.configured) {
+          toast({
+            title: "Admin Not Configured",
+            description: "ADMIN_KEY environment variable is not set. Admin access is disabled.",
+            variant: "destructive",
+          });
+        }
+        setIsAuthenticated(data.authenticated);
+        setIsLoading(false);
+      })
+      .catch(() => {
+        setIsLoading(false);
+      });
+  }, []);
 
   useEffect(() => {
     if (profile) {
@@ -57,13 +82,81 @@ export default function AdminDashboard() {
     }
   }, [profile]);
 
+  // Login mutation
+  const loginMutation = useMutation({
+    mutationFn: async (key: string) => {
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-csrf-token': csrfToken,
+        },
+        credentials: 'include',
+        body: JSON.stringify({ key }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Login failed');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      setIsAuthenticated(true);
+      setAdminKey("");
+      toast({
+        title: "Success",
+        description: "You are now logged in!",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Login Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Logout mutation
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/admin/logout', {
+        method: 'POST',
+        headers: {
+          'x-csrf-token': csrfToken,
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Logout failed');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      setIsAuthenticated(false);
+      queryClient.clear();
+      toast({
+        title: "Logged Out",
+        description: "You have been logged out successfully.",
+      });
+    },
+  });
+
   const updateProfileMutation = useMutation({
     mutationFn: async (data: FormData) => {
+      // Add CSRF token to FormData
+      data.append('_csrf', csrfToken);
+      
       const response = await fetch('/api/profile', {
         method: 'POST',
         headers: {
-          'x-api-key': apiKey,
+          'x-csrf-token': csrfToken,
         },
+        credentials: 'include',
         body: data,
       });
 
@@ -174,15 +267,6 @@ export default function AdminDashboard() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!apiKey) {
-      toast({
-        title: "Error",
-        description: "Please enter your API key",
-        variant: "destructive",
-      });
-      return;
-    }
 
     const data = new FormData();
     Object.entries(formData).forEach(([key, value]) => {
@@ -199,12 +283,85 @@ export default function AdminDashboard() {
     updateProfileMutation.mutate(data);
   };
 
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!adminKey.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter your admin key",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    loginMutation.mutate(adminKey);
+  };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen py-20 px-6 lg:px-8 flex items-center justify-center">
+        <p className="text-lg text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  // Show login form if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen py-20 px-6 lg:px-8 flex items-center justify-center">
+        <Card className="p-8 w-full max-w-md">
+          <h1 className="text-3xl font-bold text-foreground mb-6 text-center">
+            Admin Login
+          </h1>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <Label htmlFor="adminKey">Admin Key</Label>
+              <Input
+                id="adminKey"
+                type="password"
+                value={adminKey}
+                onChange={(e) => setAdminKey(e.target.value)}
+                placeholder="Enter your admin key"
+                data-testid="input-admin-key"
+                autoFocus
+              />
+              <p className="text-sm text-muted-foreground mt-2">
+                The admin key is set via the ADMIN_KEY environment variable.
+              </p>
+            </div>
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={loginMutation.isPending}
+              data-testid="button-login"
+            >
+              {loginMutation.isPending ? "Logging in..." : "Login"}
+            </Button>
+          </form>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen py-20 px-6 lg:px-8" data-testid="section-admin">
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-4xl font-bold text-foreground mb-8" data-testid="text-admin-heading">
-          Admin Dashboard
-        </h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-4xl font-bold text-foreground" data-testid="text-admin-heading">
+            Admin Dashboard
+          </h1>
+          <Button
+            variant="outline"
+            onClick={() => logoutMutation.mutate()}
+            disabled={logoutMutation.isPending}
+            data-testid="button-logout"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
+          </Button>
+        </div>
 
         <ImageCropper
           imageSrc={imageToCrop}
@@ -214,26 +371,6 @@ export default function AdminDashboard() {
         />
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <Card className="p-6 space-y-4">
-            <div>
-              <h2 className="text-2xl font-semibold text-foreground mb-4">Authentication</h2>
-              <div>
-                <Label htmlFor="apiKey">API Key</Label>
-                <Input
-                  id="apiKey"
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="Enter your admin API key"
-                  data-testid="input-api-key"
-                />
-                <p className="text-sm text-muted-foreground mt-2">
-                  Your API key should be set in the .env file as ADMIN_API_KEY
-                </p>
-              </div>
-            </div>
-          </Card>
-
           <Card className="p-6 space-y-6">
             <div>
               <h2 className="text-2xl font-semibold text-foreground mb-4">Profile Information</h2>
@@ -421,7 +558,7 @@ export default function AdminDashboard() {
         </form>
 
         <div className="mt-8">
-          <ProjectsManager apiKey={apiKey} />
+          <ProjectsManager />
         </div>
       </div>
     </div>

@@ -14,17 +14,14 @@ export default function Portfolio() {
     queryKey: ['/api/projects'],
   });
 
+  // If loading, show nothing (no section at all)
   if (isLoading) {
-    return (
-      <section id="portfolio" className="py-20 px-6 lg:px-8" data-testid="section-portfolio">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4 text-center" data-testid="text-portfolio-heading">
-            Featured Work
-          </h2>
-          <p className="text-lg text-muted-foreground text-center mb-12">Loading projects...</p>
-        </div>
-      </section>
-    );
+    return null;
+  }
+
+  // If no projects, don't render the section at all
+  if (projects.length === 0) {
+    return null;
   }
 
   return (
@@ -37,11 +34,8 @@ export default function Portfolio() {
           A selection of projects showcasing my expertise in modern web development
         </p>
 
-        {projects.length === 0 ? (
-          <p className="text-center text-muted-foreground">No projects yet. Add some from the admin panel!</p>
-        ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project) => (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {projects.map((project) => (
             <Card
               key={project.id}
               className="overflow-hidden cursor-pointer hover:scale-105 hover-elevate active-elevate-2 transition-all duration-300 group"
@@ -77,8 +71,7 @@ export default function Portfolio() {
             </Card>
             ))}
           </div>
-        )}
-      </div>
+        </div>
 
       <Dialog open={!!selectedProject} onOpenChange={() => setSelectedProject(null)}>
         <DialogContent className="max-w-2xl" data-testid="dialog-project-details">
