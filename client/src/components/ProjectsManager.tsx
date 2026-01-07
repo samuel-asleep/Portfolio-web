@@ -100,8 +100,6 @@ export default function ProjectsManager({}: ProjectsManagerProps = {}) {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(data),
       });
 
