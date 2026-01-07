@@ -65,14 +65,22 @@ function isAdminKeyConfigured(): boolean {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Get CSRF middleware from app (set in index.ts)
+  const csrfProtection = app.get('csrfProtection');
+  
   // Serve uploaded files from data/uploads
   app.use('/data/uploads', express.static(uploadDir));
   
   // Legacy compatibility - serve from /uploads as well
   app.use('/uploads', express.static(uploadDir));
 
-  // Admin login endpoint
-  app.post('/api/admin/login', (req, res) => {
+  // Get CSRF token endpoint (for clients to obtain token)
+  app.get('/api/csrf-token', (req, res) => {
+    res.json({ token: res.locals.csrfToken });
+  });
+
+  // Admin login endpoint (with CSRF protection)
+  app.post('/api/admin/login', csrfProtection, (req, res) => {
     if (!isAdminKeyConfigured()) {
       return res.status(403).json({ error: 'Admin access is not configured' });
     }
@@ -87,8 +95,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true });
   });
 
-  // Admin logout endpoint
-  app.post('/api/admin/logout', (req, res) => {
+  // Admin logout endpoint (with CSRF protection)
+  app.post('/api/admin/logout', csrfProtection, (req, res) => {
     req.session.destroy((err) => {
       if (err) {
         return res.status(500).json({ error: 'Failed to logout' });
@@ -146,8 +154,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update portfolio profile (protected)
-  app.post('/api/profile', requireAuth, upload.single('profileImage'), async (req, res) => {
+  // Update portfolio profile (protected with CSRF)
+  app.post('/api/profile', requireAuth, csrfProtection, upload.single('profileImage'), async (req, res) => {
     try {
       // Get existing profile to preserve image if no new one provided
       const existingProfile = await storage.getProfile();
@@ -232,8 +240,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Upload project image (protected) - saves to database
-  app.post('/api/projects/upload-image', requireAuth, (req, res, next) => {
+  // Upload project image (protected with CSRF) - converts to base64 for storage in config
+  app.post('/api/projects/upload-image', requireAuth, csrfProtection, (req, res, next) => {
     projectUpload.single('image')(req, res, async (err) => {
       if (err) {
         if (err instanceof multer.MulterError) {
@@ -268,8 +276,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Create a new project (protected)
-  app.post('/api/projects', requireAuth, async (req, res) => {
+  // Create a new project (protected with CSRF)
+  app.post('/api/projects', requireAuth, csrfProtection, async (req, res) => {
     try {
       // Parse order: validate it's a finite number
       let order = 0;
@@ -302,8 +310,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update a project (protected)
-  app.patch('/api/projects/:id', requireAuth, async (req, res) => {
+  // Update a project (protected with CSRF)
+  app.patch('/api/projects/:id', requireAuth, csrfProtection, async (req, res) => {
     try {
       const projectData: any = { ...req.body };
       
@@ -343,8 +351,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete a project (protected)
-  app.delete('/api/projects/:id', requireAuth, async (req, res) => {
+  // Delete a project (protected with CSRF)
+  app.delete('/api/projects/:id', requireAuth, csrfProtection, async (req, res) => {
     try {
       await storage.deleteProject(req.params.id);
       res.json({ success: true });

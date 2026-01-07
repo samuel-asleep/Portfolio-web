@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useCsrfToken } from "@/hooks/use-csrf-token";
 import { Upload, LogOut } from "lucide-react";
 import { queryClient } from "@/lib/queryClient";
 import type { Profile } from "@shared/schema";
@@ -14,6 +15,7 @@ import ProjectsManager from "./ProjectsManager";
 
 export default function AdminDashboard() {
   const { toast } = useToast();
+  const csrfToken = useCsrfToken();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [adminKey, setAdminKey] = useState("");
@@ -85,7 +87,10 @@ export default function AdminDashboard() {
     mutationFn: async (key: string) => {
       const response = await fetch('/api/admin/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-csrf-token': csrfToken,
+        },
         credentials: 'include',
         body: JSON.stringify({ key }),
       });
@@ -119,6 +124,9 @@ export default function AdminDashboard() {
     mutationFn: async () => {
       const response = await fetch('/api/admin/logout', {
         method: 'POST',
+        headers: {
+          'x-csrf-token': csrfToken,
+        },
         credentials: 'include',
       });
 
@@ -140,8 +148,14 @@ export default function AdminDashboard() {
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: FormData) => {
+      // Add CSRF token to FormData
+      data.append('_csrf', csrfToken);
+      
       const response = await fetch('/api/profile', {
         method: 'POST',
+        headers: {
+          'x-csrf-token': csrfToken,
+        },
         credentials: 'include',
         body: data,
       });

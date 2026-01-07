@@ -2,14 +2,25 @@ import express, { type Request, Response, NextFunction } from "express";
 import helmet from "helmet";
 import session from "express-session";
 import cookieParser from "cookie-parser";
+import { doubleCsrf } from "csrf-csrf";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 
 // Security headers with helmet
+const isProduction = process.env.NODE_ENV === 'production';
 app.use(helmet({
-  contentSecurityPolicy: false, // Disable CSP for dev compatibility with Vite
+  contentSecurityPolicy: isProduction ? {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"], // Tailwind requires inline styles
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'", "data:"],
+    }
+  } : false, // Disable CSP in development for Vite compatibility
   crossOriginEmbedderPolicy: false,
 }));
 
@@ -23,10 +34,34 @@ app.use(session({
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isProduction,
+    sameSite: isProduction ? 'strict' : 'lax',
     maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
   },
 }));
+
+// CSRF Protection
+const {
+  generateToken,
+  doubleCsrfProtection,
+} = doubleCsrf({
+  getSecret: () => process.env.SESSION_SECRET || 'csrf-secret-change-in-production',
+  cookieName: '__Host-psifi.x-csrf-token',
+  cookieOptions: {
+    httpOnly: true,
+    sameSite: isProduction ? 'strict' : 'lax',
+    secure: isProduction,
+    path: '/',
+  },
+  size: 64,
+  ignoredMethods: ['GET', 'HEAD', 'OPTIONS'],
+});
+
+// Make CSRF token generator available to routes
+app.use((req, res, next) => {
+  res.locals.csrfToken = generateToken(req, res);
+  next();
+});
 
 // Extend session type
 declare module 'express-session' {
@@ -79,6 +114,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Set CSRF middleware for routes to access
+  app.set('csrfProtection', doubleCsrfProtection);
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

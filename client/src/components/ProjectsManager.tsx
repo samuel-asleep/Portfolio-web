@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useCsrfToken } from "@/hooks/use-csrf-token";
 import { Plus, Pencil, Trash2, ExternalLink, Github, Upload, Link as LinkIcon, X } from "lucide-react";
 import { queryClient } from "@/lib/queryClient";
 import type { Project } from "@shared/schema";
@@ -36,6 +37,7 @@ interface ProjectsManagerProps {
 
 export default function ProjectsManager({}: ProjectsManagerProps = {}) {
   const { toast } = useToast();
+  const csrfToken = useCsrfToken();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -62,6 +64,7 @@ export default function ProjectsManager({}: ProjectsManagerProps = {}) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-csrf-token': csrfToken,
         },
         credentials: 'include',
         body: JSON.stringify(data),
@@ -98,6 +101,7 @@ export default function ProjectsManager({}: ProjectsManagerProps = {}) {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'x-csrf-token': csrfToken,
         },
         credentials: 'include',
         body: JSON.stringify(data),
@@ -132,6 +136,9 @@ export default function ProjectsManager({}: ProjectsManagerProps = {}) {
     mutationFn: async (id: string) => {
       const response = await fetch(`/api/projects/${id}`, {
         method: 'DELETE',
+        headers: {
+          'x-csrf-token': csrfToken,
+        },
         credentials: 'include',
       });
 
@@ -212,6 +219,9 @@ export default function ProjectsManager({}: ProjectsManagerProps = {}) {
 
       const response = await fetch('/api/projects/upload-image', {
         method: 'POST',
+        headers: {
+          'x-csrf-token': csrfToken,
+        },
         credentials: 'include',
         body: formDataUpload,
       });
