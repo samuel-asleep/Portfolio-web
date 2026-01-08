@@ -54,6 +54,22 @@ npm run build
 
 ## Running the Application
 
+### Simple Start (Recommended for Quick Setup)
+
+```bash
+# Install dependencies first
+npm install
+
+# Run the server directly - no build required!
+node index.js
+```
+
+The server automatically detects if the build exists:
+- **With build**: Uses optimized production build (`dist/index.js`)
+- **Without build**: Runs in development mode with Vite HMR
+
+This is perfect for servers that only run `node index.js` - just install dependencies and start!
+
 ### Development Mode
 
 ```bash
@@ -62,13 +78,21 @@ npm run dev
 
 Runs the app in development mode with hot module replacement (HMR).
 
-### Production Mode
+### Production Mode (Optimized)
 
 ```bash
+# Build first for optimal performance
+npm run build
+
+# Then start
 npm start
+# or simply: node index.js
 ```
 
-Runs the compiled production build. Make sure to run `npm run build` first.
+For production deployments, building first gives you:
+- Faster startup time
+- Smaller memory footprint
+- Optimized client bundle
 
 ## Storage Paths
 
@@ -244,30 +268,62 @@ portfolio-web/
 
 ## Building for Production
 
+### Quick Start (No Build Required)
+
 ```bash
 # Install dependencies
 npm install
 
-# Build frontend and backend
+# Just run it!
+node index.js
+```
+
+The server works out of the box with just `npm install` and `node index.js`.
+
+### Optimized Build (Recommended for Production)
+
+```bash
+# Install dependencies
+npm install
+
+# Build frontend and backend for optimal performance
 npm run build
 
 # Start production server
-npm start
+npm start  # or: node index.js
 ```
 
 The build process:
 1. Vite builds the React frontend to `dist/public/`
 2. esbuild bundles the Express server to `dist/index.js`
-3. `index.js` loads and runs the compiled server
+3. `index.js` detects the build and uses it for better performance
+
+**Note**: Building is optional but recommended for production as it provides faster startup and lower memory usage.
 
 ## Deployment
 
 ### Pterodactyl / Generic Node.js Hosting
 
+#### Simple Deployment (No Build Step)
+
 1. Set environment variables in your hosting panel:
    - `ADMIN_KEY` (required)
    - `PORT` (optional, defaults to 3000)
-   - `NODE_ENV=production`
+
+2. Install and run:
+   ```bash
+   npm install
+   node index.js
+   ```
+
+The server will automatically run in development mode with Vite serving the client.
+
+#### Optimized Deployment (With Build)
+
+1. Set environment variables in your hosting panel:
+   - `ADMIN_KEY` (required)
+   - `PORT` (optional, defaults to 3000)
+   - `NODE_ENV=production` (optional)
 
 2. Build the application:
    ```bash
