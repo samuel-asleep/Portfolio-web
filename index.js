@@ -4,6 +4,7 @@ import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { spawn } from 'child_process';
+import { platform } from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -16,7 +17,9 @@ if (existsSync(distPath)) {
   // Development/fallback mode: use tsx to run TypeScript directly
   console.log('dist/index.js not found, running server in development mode with tsx...');
   
-  const tsxPath = join(__dirname, 'node_modules', '.bin', 'tsx');
+  // Use platform-specific tsx binary path
+  const tsxBinary = platform() === 'win32' ? 'tsx.cmd' : 'tsx';
+  const tsxPath = join(__dirname, 'node_modules', '.bin', tsxBinary);
   const serverPath = join(__dirname, 'server', 'index.ts');
   
   // Verify tsx is installed
@@ -25,10 +28,10 @@ if (existsSync(distPath)) {
     process.exit(1);
   }
   
-  // Force development mode when dist doesn't exist so Vite can serve the client
+  // Use development mode when dist doesn't exist (unless explicitly overridden)
   const child = spawn(tsxPath, [serverPath], {
     stdio: 'inherit',
-    env: { ...process.env, NODE_ENV: 'development' }
+    env: { ...process.env, NODE_ENV: process.env.NODE_ENV || 'development' }
   });
   
   child.on('error', (err) => {
