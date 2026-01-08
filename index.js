@@ -34,7 +34,7 @@ if (existsSync(distPath)) {
   buildProcess.on('exit', async (code) => {
     if (code !== 0) {
       console.error(`Build failed with exit code ${code}`);
-      process.exit(code ?? 1);
+      process.exit(code || 1);
     }
     
     // Build succeeded, now run the server
