@@ -54,21 +54,42 @@ npm run build
 
 ## Running the Application
 
-### Development Mode
+### Simple Start (Recommended)
+
+```bash
+# Install dependencies
+npm install
+
+# Run the server - builds automatically if needed!
+node index.js
+```
+
+The server intelligently handles the build:
+- **With existing build**: Uses optimized production build (`dist/index.js`)
+- **Without build**: Automatically runs `npm run build` first, then starts
+
+This is perfect for servers that only run `node index.js` - just install dependencies and start!
+
+### Development Mode (with Hot Reload)
 
 ```bash
 npm run dev
 ```
 
-Runs the app in development mode with hot module replacement (HMR).
+Runs the app in development mode with hot module replacement (HMR) for active development.
 
-### Production Mode
+### Manual Production Build
 
 ```bash
+# Build first (optional - node index.js does this automatically)
+npm run build
+
+# Then start
 npm start
+# or simply: node index.js
 ```
 
-Runs the compiled production build. Make sure to run `npm run build` first.
+Pre-building is optional since `node index.js` builds automatically when needed.
 
 ## Storage Paths
 
@@ -244,32 +265,64 @@ portfolio-web/
 
 ## Building for Production
 
+### Quick Start
+
 ```bash
 # Install dependencies
 npm install
 
-# Build frontend and backend
+# Run it - builds automatically if needed!
+node index.js
+```
+
+The server automatically builds the application if `dist/` doesn't exist, then starts.
+
+### Manual Build (Optional)
+
+```bash
+# Install dependencies
+npm install
+
+# Build frontend and backend (optional - node index.js does this automatically)
 npm run build
 
 # Start production server
-npm start
+npm start  # or: node index.js
 ```
 
 The build process:
 1. Vite builds the React frontend to `dist/public/`
 2. esbuild bundles the Express server to `dist/index.js`
-3. `index.js` loads and runs the compiled server
+3. `index.js` detects the build and uses it
+
+**Note**: `node index.js` automatically builds if needed, so manual building is optional.
 
 ## Deployment
 
 ### Pterodactyl / Generic Node.js Hosting
 
+#### Simple Deployment (Automatic Build)
+
 1. Set environment variables in your hosting panel:
    - `ADMIN_KEY` (required)
    - `PORT` (optional, defaults to 3000)
-   - `NODE_ENV=production`
 
-2. Build the application:
+2. Install and run:
+   ```bash
+   npm install
+   node index.js
+   ```
+
+The server will automatically build the application on first run, then start serving.
+
+#### Pre-Built Deployment (Faster Startup)
+
+1. Set environment variables in your hosting panel:
+   - `ADMIN_KEY` (required)
+   - `PORT` (optional, defaults to 3000)
+   - `NODE_ENV=production` (optional)
+
+2. Build the application locally or in CI:
    ```bash
    npm install
    npm run build
@@ -277,10 +330,11 @@ The build process:
 
 3. Start command:
    ```bash
-   npm start
+   npm start  # or: node index.js
    ```
 
 4. The server will:
+   - Use pre-built files from `dist/` (faster startup)
    - Create `data/` directory if needed
    - Start on the specified PORT
    - Serve the built frontend from `dist/public/`
