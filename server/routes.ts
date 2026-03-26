@@ -1,41 +1,12 @@
 import type { Express, Request, Response, NextFunction } from "express";
-import express from "express";
-import { createServer, type Server } from "http";
-import { storage } from "./fileStorage";
+import { storage } from "./storage";
 import { insertProfileSchema, insertProjectSchema } from "@shared/schema";
 import multer from "multer";
 import path from "path";
-import fs from "fs";
 
-// Configure multer for profile image uploads to data/uploads
-const uploadDir = path.join(process.cwd(), "data", "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
+// Configure multer for profile image uploads using memory storage
+// so images can be stored as base64 in the database (works on Vercel)
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: uploadDir,
-    filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      cb(null, 'profile-' + uniqueSuffix + path.extname(file.originalname));
-    }
-  }),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    
-    if (mimetype && extname) {
-      return cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed'));
-    }
-  }
-});
-
-const projectUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
@@ -64,15 +35,9 @@ function isAdminKeyConfigured(): boolean {
   return !!process.env.ADMIN_KEY && process.env.ADMIN_KEY.length > 0;
 }
 
-export async function registerRoutes(app: Express): Promise<Server> {
-  // Get CSRF middleware from app (set in index.ts)
+export function registerRoutes(app: Express): void {
+  // Get CSRF middleware from app (set in app.ts)
   const csrfProtection = app.get('csrfProtection');
-  
-  // Serve uploaded files from data/uploads
-  app.use('/data/uploads', express.static(uploadDir));
-  
-  // Legacy compatibility - serve from /uploads as well
-  app.use('/uploads', express.static(uploadDir));
 
   // Get CSRF token endpoint (for clients to obtain token)
   app.get('/api/csrf-token', (req, res) => {
@@ -190,9 +155,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ error: 'Invalid image URL provided' });
         }
       }
-      // Priority 2: Check if a file was uploaded
+      // Priority 2: Check if a file was uploaded - convert to base64 for database storage
       else if (req.file) {
-        profileData.profileImage = `/data/uploads/${req.file.filename}`;
+        const imageBase64 = req.file.buffer.toString('base64');
+        const mimeType = req.file.mimetype;
+        profileData.profileImage = `data:${mimeType};base64,${imageBase64}`;
       }
       // Priority 3: Keep existing image if no new one provided
       else if (existingProfile?.profileImage) {
@@ -240,9 +207,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Upload project image (protected with CSRF) - converts to base64 for storage in config
+  // Upload project image (protected with CSRF) - converts to base64 for database storage
   app.post('/api/projects/upload-image', requireAuth, csrfProtection, (req, res, next) => {
-    projectUpload.single('image')(req, res, async (err) => {
+    upload.single('image')(req, res, async (err) => {
       if (err) {
         if (err instanceof multer.MulterError) {
           if (err.code === 'LIMIT_FILE_SIZE') {
@@ -361,8 +328,4 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to delete project' });
     }
   });
-
-  const httpServer = createServer(app);
-
-  return httpServer;
 }
