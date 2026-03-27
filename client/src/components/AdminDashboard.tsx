@@ -15,7 +15,7 @@ import ProjectsManager from "./ProjectsManager";
 
 export default function AdminDashboard() {
   const { toast } = useToast();
-  const csrfToken = useCsrfToken();
+  const { token: csrfToken, isReady: csrfReady } = useCsrfToken();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [adminKey, setAdminKey] = useState("");
@@ -96,8 +96,14 @@ export default function AdminDashboard() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Login failed');
+        let errorMessage = 'Login failed';
+        try {
+          const error = await response.json();
+          errorMessage = error.error || error.message || 'Login failed';
+        } catch {
+          errorMessage = `Login failed (${response.status})`;
+        }
+        throw new Error(errorMessage);
       }
 
       return response.json();
@@ -131,7 +137,14 @@ export default function AdminDashboard() {
       });
 
       if (!response.ok) {
-        throw new Error('Logout failed');
+        let errorMessage = 'Logout failed';
+        try {
+          const error = await response.json();
+          errorMessage = error.error || error.message || 'Logout failed';
+        } catch {
+          errorMessage = `Logout failed (${response.status})`;
+        }
+        throw new Error(errorMessage);
       }
 
       return response.json();
@@ -161,8 +174,14 @@ export default function AdminDashboard() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update profile');
+        let errorMessage = 'Failed to update profile';
+        try {
+          const error = await response.json();
+          errorMessage = error.error || error.message || 'Failed to update profile';
+        } catch {
+          errorMessage = `Failed to update profile (${response.status})`;
+        }
+        throw new Error(errorMessage);
       }
 
       return response.json();
@@ -295,6 +314,15 @@ export default function AdminDashboard() {
       return;
     }
 
+    if (!csrfReady) {
+      toast({
+        title: "Error",
+        description: "Please wait a moment and try again",
+        variant: "destructive",
+      });
+      return;
+    }
+
     loginMutation.mutate(adminKey);
   };
 
@@ -334,7 +362,7 @@ export default function AdminDashboard() {
             <Button 
               type="submit" 
               className="w-full" 
-              disabled={loginMutation.isPending}
+              disabled={loginMutation.isPending || !csrfReady}
               data-testid="button-login"
             >
               {loginMutation.isPending ? "Logging in..." : "Login"}
