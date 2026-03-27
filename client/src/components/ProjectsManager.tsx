@@ -37,7 +37,7 @@ interface ProjectsManagerProps {
 
 export default function ProjectsManager({}: ProjectsManagerProps = {}) {
   const { toast } = useToast();
-  const csrfToken = useCsrfToken();
+  const { token: csrfToken } = useCsrfToken();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -71,8 +71,14 @@ export default function ProjectsManager({}: ProjectsManagerProps = {}) {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create project');
+        let errorMessage = 'Failed to create project';
+        try {
+          const error = await response.json();
+          errorMessage = error.error || error.message || 'Failed to create project';
+        } catch {
+          errorMessage = `Failed to create project (${response.status})`;
+        }
+        throw new Error(errorMessage);
       }
 
       return response.json();
@@ -108,8 +114,14 @@ export default function ProjectsManager({}: ProjectsManagerProps = {}) {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update project');
+        let errorMessage = 'Failed to update project';
+        try {
+          const error = await response.json();
+          errorMessage = error.error || error.message || 'Failed to update project';
+        } catch {
+          errorMessage = `Failed to update project (${response.status})`;
+        }
+        throw new Error(errorMessage);
       }
 
       return response.json();
@@ -143,8 +155,14 @@ export default function ProjectsManager({}: ProjectsManagerProps = {}) {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete project');
+        let errorMessage = 'Failed to delete project';
+        try {
+          const error = await response.json();
+          errorMessage = error.error || error.message || 'Failed to delete project';
+        } catch {
+          errorMessage = `Failed to delete project (${response.status})`;
+        }
+        throw new Error(errorMessage);
       }
 
       return response.json();
