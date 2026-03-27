@@ -66,8 +66,8 @@ const {
   doubleCsrfProtection,
 } = doubleCsrf({
   getSecret: () => process.env.SESSION_SECRET || 'csrf-secret-change-in-production',
-  getSessionIdentifier: (req) => req.session.id || '',
-  cookieName: '__Host-psifi.x-csrf-token',
+  getSessionIdentifier: () => '',
+  cookieName: isProduction ? '__Host-psifi.x-csrf-token' : 'psifi.x-csrf-token',
   cookieOptions: {
     httpOnly: true,
     sameSite: isProduction ? 'strict' : 'lax',
@@ -80,7 +80,7 @@ const {
 
 // Make CSRF token generator available to routes
 app.use((req, res, next) => {
-  res.locals.csrfToken = generateCsrfToken(req, res, { overwrite: true });
+  res.locals.csrfToken = generateCsrfToken(req, res);
   next();
 });
 
