@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import type { Profile, InsertProfile, Project, InsertProject } from "@shared/schema";
+import type { Profile, InsertProfile, Project, InsertProject } from "../shared/schema.js";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const CONFIG_FILE = path.join(DATA_DIR, "config.json");
