@@ -1,5 +1,5 @@
 import { type Profile, type InsertProfile, type Project, type InsertProject, profiles, projects } from "../shared/schema.js";
-import { db } from "./db.js";
+import { db, ensureDatabaseSchema } from "./db.js";
 import { eq, asc } from "drizzle-orm";
 
 export interface IStorage {
@@ -13,7 +13,12 @@ export interface IStorage {
 }
 
 export class DbStorage implements IStorage {
+  private async ready(): Promise<void> {
+    await ensureDatabaseSchema();
+  }
+
   async getProfile(): Promise<Profile | undefined> {
+    await this.ready();
     const result = await db.select().from(profiles).limit(1);
     return result[0];
   }
@@ -38,20 +43,24 @@ export class DbStorage implements IStorage {
   }
 
   async getProjects(): Promise<Project[]> {
+    await this.ready();
     return await db.select().from(projects).orderBy(asc(projects.order));
   }
 
   async getProject(id: string): Promise<Project | undefined> {
+    await this.ready();
     const result = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
     return result[0];
   }
 
   async createProject(project: InsertProject): Promise<Project> {
+    await this.ready();
     const [created] = await db.insert(projects).values(project).returning();
     return created;
   }
 
   async updateProject(id: string, project: Partial<InsertProject>): Promise<Project> {
+    await this.ready();
     const [updated] = await db
       .update(projects)
       .set(project)
@@ -61,6 +70,7 @@ export class DbStorage implements IStorage {
   }
 
   async deleteProject(id: string): Promise<void> {
+    await this.ready();
     await db.delete(projects).where(eq(projects.id, id));
   }
 }

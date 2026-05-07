@@ -13,6 +13,11 @@ const app = express();
 
 const isProduction = process.env.NODE_ENV === 'production';
 
+// Trust reverse proxy headers in production (required for secure cookies on hosts like Vercel)
+if (isProduction) {
+  app.set('trust proxy', 1);
+}
+
 // Security headers with helmet
 app.use(helmet({
   contentSecurityPolicy: isProduction ? {
