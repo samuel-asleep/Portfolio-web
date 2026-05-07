@@ -1,6 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { storage } from "./storage.js";
-import { insertProfileSchema, insertProjectSchema } from "@shared/schema";
+import { insertProfileSchema, insertProjectSchema } from "../shared/schema.js";
 import multer from "multer";
 import path from "path";
 
