@@ -24,9 +24,8 @@ export class DbStorage implements IStorage {
   }
 
   async updateProfile(insertProfile: InsertProfile): Promise<Profile> {
-    await this.ready();
     // Check if profile exists
-    const [existing] = await db.select().from(profiles).limit(1);
+    const existing = await this.getProfile();
     
     if (existing) {
       // Update existing profile
