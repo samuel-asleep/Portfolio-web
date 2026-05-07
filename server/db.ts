@@ -16,9 +16,11 @@ export const db = drizzle(pool, { schema });
 let schemaInitialization: Promise<void> | null = null;
 
 async function initializeDatabaseSchema(): Promise<void> {
+  await db.execute(sql`CREATE EXTENSION IF NOT EXISTS pgcrypto;`);
+
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS profiles (
-      id varchar PRIMARY KEY DEFAULT md5(random()::text || clock_timestamp()::text),
+      id varchar PRIMARY KEY DEFAULT (gen_random_uuid())::text,
       name text NOT NULL DEFAULT '',
       title text NOT NULL DEFAULT '',
       bio text NOT NULL DEFAULT '',
@@ -34,7 +36,7 @@ async function initializeDatabaseSchema(): Promise<void> {
 
   await db.execute(sql`
     CREATE TABLE IF NOT EXISTS projects (
-      id varchar PRIMARY KEY DEFAULT md5(random()::text || clock_timestamp()::text),
+      id varchar PRIMARY KEY DEFAULT (gen_random_uuid())::text,
       title text NOT NULL,
       description text NOT NULL,
       long_description text,
