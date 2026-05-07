@@ -6,8 +6,8 @@ import { doubleCsrf } from "csrf-csrf";
 import connectPgSimple from "connect-pg-simple";
 import { Pool, neonConfig } from "@neondatabase/serverless";
 import ws from "ws";
-import { registerRoutes } from "./routes";
-import { serveStatic, log } from "./logger";
+import { registerRoutes } from "./routes.js";
+import { serveStatic, log } from "./logger.js";
 
 const app = express();
 
